@@ -1,160 +1,302 @@
-= Template and instructions for the Eclipse Vert.x how-tos
-:author: Julien Ponge <julien.ponge@gmail.com>
-:toc:
+// suppress inspection "GrazieInspection" for whole file
+= Using Resilience4j with Vert.x
+:page-permalink: /
+:page-github: vertx-howtos/resilience4j-howto
 
-This repository can be cloned and used as a basis for creating a new Eclipse Vert.x how-to.
-It especially contains the https://jekyllrb.com/[Jekyll] and continuous integration configurations for publishing a how-to as a web page.
+ifdef::env-github[]
+image:https://github.com/vertx-howtos/resilience4j-howto/workflows/Publish%20the%20how-to/badge.svg["Build Status", link="https://github.com/vertx-howtos/resilience4j-howto/actions?query=workflow%3A%22Publish+the+how-to%22"]
+endif::env-github[]
 
-== Conventions
+This document will show you how to use Resilience4j in Vert.x applications.
 
-Each how-to is a self-contained Git repository of the https://github.com/vertx-howtos[corresponding organisation on GitHub].
+link:https://resilience4j.readme.io/[Resilience4j] is a popular library that implements common fault tolerance strategies:
 
-The how-to document is written using the https://asciidoctor.org/docs/what-is-asciidoc/[Asciidoc] text format in a file called `README.adoc` at the root of the Git repository.
+* bulkhead (concurrency limiter)
+* circuit breaker
+* rate limiter
+* retry
+* time limiter (timeout)
 
-The accompanying source code is directly at the root of the Git repository.
-For instance a Maven `pom.xml` is co-located with `README.adoc` at the root of the repository.
+In this how-to, we only demonstrate the usage of a circuit breaker, but the repository of this how-to contains Vert.x adapters for all strategies mentioned above.
 
-Projects should preferably have both Maven and Gradle build descriptors.
-An author who doesn't have knowledge of either of the tools can always ask for contributions.
+WARNING: Resilience4j 2.0, which we'll use here, requires Java 17.
 
-== Structure of a how-to
+== What you will build
 
-A how-to is not a guide or a mini-book: it must be as concise as possible.
+You will use a circuit breaker with an HTTP client to prevent executing requests against a server that keeps returning errors.
+This serves two main purposes:
 
-In practice this means that each how-to must focus on a very narrow topic.
-It also means that the text must not deviate from the topic, and that the chosen example must be as simple as possible.
+* avoid generating more load on a server that may be overloaded,
+* failing fast when failure is very likely to occur anyway.
 
-The structure of a how-to must be as follows.
+The application consists of a few classes:
 
-=== What you will build
+. the `CircuitBreakerVerticle` class
+. the `VertxCircuitBreaker` adapter, which is included in the repository of this how-to
 
-- Explain the example scenario from a functional point of view.
-- Explain what the user can see when running the example.
-- Highlight the different pieces of code to be written and how they fit together.
+== What you need
 
-=== What you need
+* A text editor or IDE
+* Java 17 or higher
+* Maven or Gradle
 
-- List all required tools to edit, build and run the how-to.
-- Do not hesitate to point to third-party resources (e.g., if you need Docker, say why you need it and point to its installation documentation).
+== Create a project
 
-=== Create a project
+The code of this project contains Maven and Gradle build files that are functionally equivalent.
 
-- Explain how to create the project.
-- Show the Maven / Gradle build descriptors.
-- For any third-party tool (e.g., running a database with Docker), also have a subsection to explain this.
+=== Using Maven
 
-=== Implementation sections
+First, your `pom.xml` file should declare version properties:
 
-- Make one or multiple sections to show the implementation.
-- Make use of Asciidoc source code comments to highlight specific parts of the code.
-- The code must be included using https://asciidoctor.org/docs/asciidoc-syntax-quick-reference/#source-code[Asciidoc directives]. Remember that you can include fragments of code by using delimiter tags.
+ifdef::env-github[]
+link:pom.xml[Maven POM file]
+endif::env-github[]
+ifndef::env-github[]
+[source,xml,indent=0]
+.Maven `pom.xml`: version properties
+----
+include::pom.xml[tag=versions]
+----
+endif::env-github[]
 
-=== Running the application
+Next, import the Resilience4j and Vert.x BOMs to manage dependency versions:
 
-- Always show the various options to run the application.
+ifdef::env-github[]
+link:pom.xml[Maven POM file]
+endif::env-github[]
+ifndef::env-github[]
+[source,xml,indent=0]
+.Maven `pom.xml`: BOM imports
+----
+include::pom.xml[tag=bom]
+----
+endif::env-github[]
 
-=== Summary
+Then, add a dependency on the Resilience4j circuit breaker library:
 
-- Briefly recapitulate what was covered and learned in the how-to.
+ifdef::env-github[]
+link:pom.xml[Maven POM file]
+endif::env-github[]
+ifndef::env-github[]
+[source,xml,indent=0]
+.Maven `pom.xml`: Resilience4j dependency
+----
+include::pom.xml[tag=dependency-resilience4j]
+----
+endif::env-github[]
 
-=== See also
+Finally, add dependencies on the Vert.x Web and Vert.x Web Client libraries:
 
-- If possible, link to other how-tos.
-- If judicious, link to Vert.x or third-party documentation.
+ifdef::env-github[]
+link:pom.xml[Maven POM file]
+endif::env-github[]
+ifndef::env-github[]
+[source,xml,indent=0]
+.Maven `pom.xml`: Vert.x dependencies
+----
+include::pom.xml[tag=dependency-vertx]
+----
+endif::env-github[]
 
-== How is the website being rendered?
+=== Using Gradle
 
-The website is being rendered using Jekyll and the Asciidoctor extension for Jekyll.
+The `dependencies` block in your `build.gradle.kts` file (assuming you use Gradle with the Kotlin DSL) should first import the Resilience4j and Vert.x BOMs to manage dependency versions:
 
-There is a https://github.com/vertx-howtos/vertx-howtos-jekyll-theme[Jekyll theme] published as a Ruby Gem, so every how-to uses a common theme.
+ifdef::env-github[]
+link:build.gradle.kts[Gradle build file]
+endif::env-github[]
+ifndef::env-github[]
+[source,kotlin,indent=0]
+.Gradle `build.gradle.kts`: BOM imports
+----
+include::build.gradle.kts[tag=bom]
+----
+endif::env-github[]
 
-=== Asciidoctor attributes
+Then, add a dependency on the Resilience4j circuit breaker library:
 
-The common theme depends on the following attributes to be set right below the title header:
+ifdef::env-github[]
+link:build.gradle.kts[Gradle build file]
+endif::env-github[]
+ifndef::env-github[]
+[source,kotlin,indent=0]
+.Gradle `build.gradle.kts`: Resilience4j dependency
+----
+include::build.gradle.kts[tag=dependency-resilience4j]
+----
+endif::env-github[]
+
+Finally, add dependencies on the Vert.x Web and Vert.x Web Client libraries:
+
+ifdef::env-github[]
+link:build.gradle.kts[Gradle build file]
+endif::env-github[]
+ifndef::env-github[]
+[source,kotlin,indent=0]
+.Gradle `build.gradle.kts`: Vert.x dependencies
+----
+include::build.gradle.kts[tag=dependency-vertx]
+----
+endif::env-github[]
+
+== Using circuit breaker to guard Vert.x Web Client requests
+
+First, let's create the main `CircuitBreakerVerticle` class:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.The `CircuitBreakerVerticle` class
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=class]
+----
+endif::env-github[]
+
+This class will use the `VertxCircuitBreaker` class, which is provided in the repository of this how-to.
+
+=== Creating the circuit breaker
+
+In the `start` method of the verticle, let's create a single circuit breaker instance that will be shared among all requests.
+For demonstration purposes, we will configure the circuit breaker to start calculating the failure rate after mere 5 requests:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.Create the circuit breaker
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=circuit-breaker]
+----
+endif::env-github[]
+
+TIP: The default settings make a lot more sense for a real-world application than our demonstration configuration.
+
+=== Creating a server
+
+Next, we'll use Vert.x Web to expose a simple endpoint.
+The sole purpose of that endpoint will be to perform an HTTP request and guard it with the circuit breaker:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.Create the endpoint
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=router]
+----
+endif::env-github[]
+
+This deserves some explanation.
+
+The endpoint on `/` uses the `VertxCircuitBreaker` adapter that glues together the Resilience4j API and Vert.x ``Future``s.
+The adapter expects a `Supplier<Future>` as an action to be guarded.
+
+The `Future` here comes from the Vert.x Web Client `get(8080, "localhost", "/does-not-exist")` call.
+
+As you can imagine, the request we make here will never succeed.
+Therefore, the circuit breaker will kick in after 5 requests (as configured above) and will prevent further calls to the guarded action.
+Instead, the `Future` returned by `executeFuture` will fail instantly with the `CallNotPermittedException` exception.
+
+=== Starting the server
+
+Finally, we'll start the server:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.Start the server
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=server]
+----
+endif::env-github[]
+
+The entire `start` method of the verticle looks like this:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.The `start` method of the verticle
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=start]
+----
+endif::env-github[]
+
+== Running the application
+
+The `CircuitBreakerVerticle` also needs a `main` method:
+
+ifdef::env-github[]
+link:src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[The `CircuitBreakerVerticle` class]
+endif::env-github[]
+ifndef::env-github[]
+[source,java,indent=0]
+.The `main` method
+----
+include::src/main/java/io/vertx/howtos/resilience4j/CircuitBreakerVerticle.java[tag=main]
+----
+endif::env-github[]
+
+Then you can run the application:
+
+* straight from your IDE, or
+* with Maven: `mvn clean compile exec:java`, or
+* with Gradle: `./gradlew run` (Linux, macOS) or `gradlew run` (Windows).
+
+The following examples use the https://httpie.org/[HTTPie] command line HTTP client.
+Please refer to the https://httpie.org/doc#installation[installation] documentation if you don't have it installed on your system yet.
+
+=== First 5 requests
+
+For the first 5 requests, the circuit breaker does not calculate the failure rate and will allow all actions to proceed.
+As expected, they will all fail:
+
+[source,shell]
+----
+http localhost:8080
+http localhost:8080
+http localhost:8080
+http localhost:8080
+http localhost:8080
+----
+
+You should see the following output 5 times:
 
 [source,text]
 ----
-= My awesome how-to
-:page-permalink: /
-:page-github: vertx-howtos/my-howto
+Failed with: io.vertx.core.impl.NoStackTraceThrowable: Response status code 404 is not between 200 and 300
 ----
 
-The `page-permalink` attribute ensures that `README.adoc` is rendered as `index.html` rather than `README.adoc`.
+=== Next, the circuit breaker kicks in
 
-The `page-github` attribute must contain the joint GitHub organization and repository so it can properly link to the GitHub repository, provide a direct edition link, and more.
-
-=== Jekyll configuration
-
-The Jekyll configuration shall not have to be tweaked much, here is the basic configuration that we use:
-
-[source,yaml]
+[source,shell]
 ----
-include::_config.yml[]
+http localhost:8080
 ----
 
-TIP: When running Jekyll, check the content of the `_site/` folder and adapt the `exclude` items to avoid pushing unnecessary content to the website.
+The 6th request will fail with a different message:
 
-=== Ruby environment
-
-It is strongly recommended to use either https://github.com/rbenv/rbenv[rbenv] or https://rvm.io/[RVM] for your Ruby installation.
-
-You will need https://bundler.io/[Bundler] to install all required dependencies:
-
+[source,text]
 ----
-$ gem install bundler
+Failed with: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'my-circuit-breaker' is OPEN and does not permit further calls
 ----
 
-You can then let _Bundler_ do the installation work:
+We see that the circuit breaker prevented the execution of the request against the server.
 
-----
-$ bundle install
-----
+== Summary
 
-From time to time you may also update dependencies:
+This document covered:
 
-----
-$ bundle update
-----
+. creating an instance of the Resilience4j circuit breaker,
+. using the circuit breaker to guard an action whose result is a Vert.x `Future`.
 
-The dependencies are specified in the `Gemfile` file:
+== See also
 
-[source,ruby]
-----
-include::Gemfile[]
-----
-
-TIP: Keep the `vertx-howtos-jekyll-theme` dependency up-to-date!
-
-=== Running Jekyll
-
-You can run Jekyll with a full auto-reload experience:
-
-----
-$ bundle exec jekyll server --watch --livereload
-----
-
-== How is the website being published?
-
-The content first needs to be rendered by Jekyll, then the resulting web site files are being pushed to the repository `gh-pages` branch.
-GitHub pages then exposes the content of the `gh-pages` branch as the website.
-
-While you could do this manually, we automate the process with GitHub Actions.
-Pushing to the `master` branch triggers a deployment, and a daily cron job is in place.
-
-== Misc
-
-=== Code style
-
-There is a `.editorconfig` file in this template repository with the 2-space indentation style that we prefer in Vert.x.
-
-In any case, favour readability in samples:
-
-- do not hesitate to use blank lines,
-- do not over-engineer,
-- use explicit short private methods rather than complicated lambdas expressions.
-
-=== Asciidoc style
-
-Asciidoc does not enforce any style.
-
-We recommended that you follow the https://asciidoctor.org/docs/asciidoc-recommended-practices/[Asciidoctor recommended practices], and especially the https://asciidoctor.org/docs/asciidoc-recommended-practices/#one-sentence-per-line["One sentence per line"] rule.
+* link:https://resilience4j.readme.io/[The Resilience4j documentation]
