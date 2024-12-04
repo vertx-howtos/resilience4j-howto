@@ -44,10 +44,6 @@ application {
   mainClass.set("io.vertx.howtos.resilience4j.CircuitBreakerVerticle")
 }
 
-tasks.wrapper {
-  gradleVersion = "7.6"
-}
-
 tasks.withType<Test> {
   useJUnitPlatform()
 }
