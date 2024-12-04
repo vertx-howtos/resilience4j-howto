@@ -21,14 +21,14 @@ public class VertxTimeLimiterTest {
     Duration timeoutDuration = Duration.ofMillis(100);
     TimeLimiter timeLimiter = TimeLimiter.of(timeoutDuration);
 
-    Supplier<Future<Integer>> supplier = () -> vertx.executeBlocking(promise -> {
+    Supplier<Future<Integer>> supplier = () -> vertx.executeBlocking(() -> {
       try {
         // sleep for timeout
         Thread.sleep(5000);
       } catch (InterruptedException e) {
         // nothing
       }
-      promise.complete(0);
+      return 0;
     });
 
     Future<Integer> decorated = VertxTimeLimiter.decorateFuture(timeLimiter, vertx, supplier).get();
@@ -44,14 +44,14 @@ public class VertxTimeLimiterTest {
     Duration timeoutDuration = Duration.ofSeconds(5);
     TimeLimiter timeLimiter = TimeLimiter.of(timeoutDuration);
 
-    Supplier<Future<Integer>> supplier = () -> vertx.executeBlocking(promise -> {
+    Supplier<Future<Integer>> supplier = () -> vertx.executeBlocking(() -> {
       try {
         // sleep but not timeout
         Thread.sleep(100);
       } catch (InterruptedException e) {
         // nothing
       }
-      promise.complete(42);
+      return 42;
     });
 
     Future<Integer> future = VertxTimeLimiter.executeFuture(timeLimiter, vertx, supplier);

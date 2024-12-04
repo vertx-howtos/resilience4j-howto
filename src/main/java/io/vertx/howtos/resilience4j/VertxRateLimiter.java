@@ -5,7 +5,7 @@ import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.ContextInternal;
+import io.vertx.core.internal.ContextInternal;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;

@@ -16,7 +16,7 @@ java {
 dependencies {
   // tag::bom[]
   implementation(platform("io.github.resilience4j:resilience4j-bom:2.1.0"))
-  implementation(platform("io.vertx:vertx-stack-depchain:4.4.4"))
+  implementation(platform("io.vertx:vertx-stack-depchain:5.0.0.CR2"))
   // end::bom[]
 
   implementation("io.github.resilience4j:resilience4j-bulkhead")

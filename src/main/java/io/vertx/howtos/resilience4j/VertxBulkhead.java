@@ -4,7 +4,7 @@ import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.impl.ContextInternal;
+import io.vertx.core.internal.ContextInternal;
 
 import java.util.function.Supplier;
 

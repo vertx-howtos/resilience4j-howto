@@ -15,10 +15,7 @@ import java.time.Duration;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
 public class VertxRateLimiterTest {
@@ -45,8 +42,8 @@ public class VertxRateLimiterTest {
     Supplier<String> supplier = mock(Supplier.class);
     when(supplier.get()).thenReturn("Resource");
     Supplier<Future<String>> future = () -> {
-      return vertx.executeBlocking(promise -> {
-        promise.complete(supplier.get());
+      return vertx.executeBlocking(() -> {
+        return supplier.get();
       });
     };
     Supplier<Future<String>> decorated = VertxRateLimiter.decorateFuture(limit, future, vertx);
@@ -66,8 +63,8 @@ public class VertxRateLimiterTest {
     Supplier<String> supplier = mock(Supplier.class);
     when(supplier.get()).thenReturn("Resource");
     Supplier<Future<String>> future = () -> {
-      return vertx.executeBlocking(promise -> {
-        promise.complete(supplier.get());
+      return vertx.executeBlocking(() -> {
+        return supplier.get();
       });
     };
     Supplier<Future<String>> decorated = VertxRateLimiter.decorateFuture(limit, future, vertx);

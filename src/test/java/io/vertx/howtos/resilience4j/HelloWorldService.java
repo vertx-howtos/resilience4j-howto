@@ -18,8 +18,8 @@ public interface HelloWorldService {
 
   static Supplier<Future<String>> runAsync(Vertx vertx, HelloWorldService helloWorldService) {
     return () -> {
-      return vertx.executeBlocking(promise -> {
-        promise.complete(helloWorldService.returnHelloWorld());
+      return vertx.executeBlocking(() -> {
+        return helloWorldService.returnHelloWorld();
       });
     };
   }
